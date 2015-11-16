@@ -1,4 +1,4 @@
-is_url_char(c) =  ((@assert c < 0x80); 'A' <= c <= '~' || '$' <= c <= '>' || c == 12 || c == 9)
+is_url_char(c) =  ((@assert c < 0x80); 'A' <= c <= '~' || '$' <= c <= '>' || c == 12 || c == 9 || c == 33)
 is_mark(c) = (c == '-') || (c == '_') || (c == '.') || (c == '!') || (c == '~') ||
              (c == '*') || (c == '\'') || (c == '(') || (c == ')')
 is_userinfo_char(c) = isalnum(c) || is_mark(c) || (c == '%') || (c == ';') ||
@@ -173,7 +173,7 @@ function parse_url(url)
                 server = url[r]
             elseif last_state == :req_query_string
                 query = url[r]
-            elseif last_state == :req_path
+            elseif last_state == :req_path && state != :req_server
                 path = url[r]
             elseif last_state == :req_fragment
                 fragment = url[r]
@@ -199,10 +199,14 @@ function parse_url(url)
         last_state = state
 
         if state == :req_spaces_before_url
-            if ch == '/' || ch == '*'
+            if ch == '/' && next(url,i)[1] == '/'
+                state = :req_scheme_slash_slash
+            elseif ch == '/' || ch == '*'
                 state = :req_path
             elseif isalpha(ch)
                 state = :req_scheme
+            elseif ch == '#'
+                state = :req_fragment_start
             else
                 error("Unexpected start of URL")
             end
